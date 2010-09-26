@@ -8,10 +8,10 @@ DB_PATH="$HOME/Documents/$DB"
 BACKUP_DB="$DB_PATH.bak"
 
 # Fetch current weather conditions
-"$HOME/Documents/open2300/sqlitelog2300" "$DB"
+"$HOME/Documents/open2300/sqlitelog2300" "$DB_PATH"
 
 # Snapshot the DB
-sqlite3 "$DB" ".backup \"$BACKUP_DB\""
+sqlite3 "$DB_PATH" ".backup \"$BACKUP_DB\""
 
 # Push to the server
 rsync -az "$BACKUP_DB" "weather@weather.wezm.net:$DB"
