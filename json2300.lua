@@ -11,8 +11,25 @@ end
 
 local db = sqlite3.open(db_path)
 
+-- Current Weather Conditions
 local stmt = db:prepare[[
-    SELECT *
+    SELECT
+      strftime("%s", datetime) * 1000 AS timestamp,
+      dewpoint,
+      forecast,
+      rain_1h,
+      rain_24h,
+      rain_total,
+      rel_humidity_in,
+      rel_humidity_out,
+      rel_pressure,
+      temperature_in,
+      temperature_out,
+      tendency,
+      wind_angle,
+      wind_chill,
+      wind_direction,
+      wind_speed
     FROM weather
     WHERE datetime(datetime) = (
         SELECT MAX(datetime(datetime))
@@ -34,15 +51,59 @@ end
 
 stmt:finalize()
 
--- Get the weather history
+-- Weather History
 local sql = [[
-    SELECT strftime("%s", datetime) * 1000, temperature_in, temperature_out
+    SELECT strftime("%s", datetime) * 1000 AS timestamp, temperature_in, temperature_out
     FROM weather
 ]]
 
-weather.history = {}
-for row in db:rows(sql) do
-    weather.history[#weather.history + 1] = row
+--[[
+
+Required data format for flot JS charting library
+
+[ { label: "Foo", data: [ [10, 1], [17, -14], [30, 5] ] },
+  { label: "Bar", data: [ [11, 13], [19, 11], [30, -7] ] } ]
+
+]]--
+temp_in = {}
+temp_out = {}
+for row in db:nrows(sql) do
+    temp_in[#temp_in + 1] = { row.timestamp, row.temperature_in }
+    temp_out[#temp_out + 1] = { row.timestamp, row.temperature_out }
+end
+weather.history = {
+    { label = "Inside Temperature",  data = temp_in  },
+    { label = "Outside Temperature", data = temp_out }
+}
+
+-- Min Temperature
+sql = [[
+  SELECT strftime("%s", datetime) * 1000 AS timestamp, temperature_out
+  FROM weather
+  WHERE date(datetime) = (SELECT MAX(date(datetime)) FROM weather)
+  ORDER BY temperature_out ASC
+  LIMIT 1
+]]
+for row in db:nrows(sql) do
+  weather.current.min = {
+    temperature = row.temperature_out,
+    timestamp = row.timestamp
+  }
+end
+
+-- Max Temperature
+sql = [[
+  SELECT strftime("%s", datetime) * 1000 AS timestamp, temperature_out
+  FROM weather
+  WHERE date(datetime) = (SELECT MAX(date(datetime)) FROM weather)
+  ORDER BY temperature_out DESC
+  LIMIT 1
+]]
+for row in db:nrows(sql) do
+  weather.current.max = {
+    temperature = row.temperature_out,
+    timestamp = row.timestamp
+  }
 end
 
 db:close()
