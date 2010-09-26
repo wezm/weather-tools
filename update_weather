@@ -1,0 +1,21 @@
+#!/bin/sh
+
+# Script that snapshots the SQLite weather database, rsyncs it to the server
+# and then generates a JSON extract.
+
+DB="weather.sqlite"
+DB_PATH="$HOME/Documents/$DB"
+BACKUP_DB="$DB_PATH.bak"
+
+# Fetch current weather conditions
+"$HOME/Documents/open2300/sqlitelog2300" "$DB"
+
+# Snapshot the DB
+sqlite3 "$DB" ".backup \"$BACKUP_DB\""
+
+# Push to the server
+rsync -az "$BACKUP_DB" "weather@weather.wezm.net:$DB"
+
+# Regenerate the JSON
+ssh weather@weather.wezm.net "env LUA_INIT=\"require \\\"luarocks.require\\\"\" LUA_PATH=\"/usr/share/lua/5.1//?.lua\" lua weather-tools/json2300.lua $DB www/weather.json"
+
