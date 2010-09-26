@@ -1,7 +1,14 @@
 require("lsqlite3")
 require("json")
 
-local db_path = "/Users/wmoore/Documents/weather.sqlite" -- TODO: Get from argv
+local db_path = arg[1]
+local json_path = arg[2]
+
+if(not(db_path and json_path)) then
+  print("Usage: json2300 db_path json_path")
+  os.exit(2)
+end
+
 local db = sqlite3.open(db_path)
 
 local stmt = db:prepare[[
@@ -50,7 +57,7 @@ end
 db:close()
 
 -- write out JSON
-local jsonfile, err = io.open("weather.json", "w")
+local jsonfile, err = io.open(json_path, "w")
 if (jsonfile) then
   jsonfile:write(json.encode(weather))
   jsonfile:close()
