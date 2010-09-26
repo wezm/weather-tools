@@ -26,15 +26,6 @@ if (stmt == nil) then
     os.exit(1)
 end
 
---local rc = stmt:bind_values(os.date("!%F")) -- Current time UTC
--- local rc = stmt:bind_values("2010-09-19") -- Current time UTC
--- if(rc ~= sqlite3.OK) then
---     print("Error binding datetime: " .. db:errmsg())
---     stmt:finalize()
---     db:close()
---     os.exit(1)
--- end
-
 local weather = {}
 
 for row in stmt:nrows() do
@@ -64,5 +55,3 @@ if (jsonfile) then
 else
   print("Unable to open JSON file for writing: " .. err)
 end
-
---print(json.encode(weather))
