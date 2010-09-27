@@ -55,6 +55,7 @@ stmt:finalize()
 local sql = [[
     SELECT strftime("%s", datetime) * 1000 AS timestamp, temperature_in, temperature_out
     FROM weather
+    WHERE temperature_out > -29.9 AND temperature_out < 69.9
 ]]
 
 --[[
@@ -81,6 +82,7 @@ sql = [[
   SELECT strftime("%s", datetime) * 1000 AS timestamp, temperature_out
   FROM weather
   WHERE date(datetime) = (SELECT MAX(date(datetime)) FROM weather)
+  AND temperature_out > -29.9 AND temperature_out < 69.9
   ORDER BY temperature_out ASC
   LIMIT 1
 ]]
@@ -96,6 +98,7 @@ sql = [[
   SELECT strftime("%s", datetime) * 1000 AS timestamp, temperature_out
   FROM weather
   WHERE date(datetime) = (SELECT MAX(date(datetime)) FROM weather)
+  AND temperature_out > -29.9 AND temperature_out < 69.9
   ORDER BY temperature_out DESC
   LIMIT 1
 ]]
