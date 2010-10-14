@@ -54,13 +54,29 @@ while true do
     if req:is_disconnect() then
         print 'Disconnected'
     else
-        local response = w:current()
-        headers = {
-          ["Content-Type"] = "application/json"
+        -- Dispatch
+        -- print(req.path)
+        local response
+        local code = 200
+        local status = "OK"
+        local headers = {
+          ["Content-Type"] = "text/plain"
         }
-        
-        conn:reply_http(req, json.encode(response), 200, "OK", headers)
-        ---conn:reply_json(req, req.headers)
+
+        if(req.path:find('^/weather/current')) then
+          response = w:current()
+          headers["Content-Type"] = "application/json"
+        elseif(req.path:find('^/weather/history')) then
+          response = w:history()
+          headers["Content-Type"] = "application/json"
+        else
+          code = 404
+          status = "Not Found"
+          response = {error = status}
+          headers["Content-Type"] = "application/json"
+        end
+
+        conn:reply_http(req, json.encode(response), code, status, headers)
     end
 end
 
