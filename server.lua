@@ -46,6 +46,21 @@ local conn = ctx:new_connection(sender_id, sub_addr, pub_addr)
 
 local w = weather.new(db)
 
+-- Define the routes
+routes = {}
+
+function route(method, pattern, block)
+  routes[#routes + 1] = {method = method, pattern = pattern, block = block}
+end
+
+function get(pattern, block)
+  route('GET', pattern, block)
+end
+
+get("^/weather/current$", function()
+  return "Hello from /weather/hello"
+end)
+
 -- Enter the main loop
 while true do
     print 'Waiting for request...'
@@ -56,25 +71,34 @@ while true do
     else
         -- Dispatch
         -- print(req.path)
-        local response
-        local code = 200
-        local status = "OK"
+        local response = "Not Found"
+        local code = 404
+        local status = "Not Found"
         local headers = {
           ["Content-Type"] = "text/plain"
         }
 
-        if(req.path:find('^/weather/current')) then
-          response = w:current()
-          headers["Content-Type"] = "application/json"
-        elseif(req.path:find('^/weather/history')) then
-          response = w:history()
-          headers["Content-Type"] = "application/json"
-        else
-          code = 404
-          status = "Not Found"
-          response = {error = status}
-          headers["Content-Type"] = "application/json"
+        for idx, route in ipairs(routes) do
+          if(req.path:find(route.pattern)) then
+            response = route.block()
+            status = "OK"
+            code = 200
+            break
+          end
         end
+
+        -- if(req.path:find('^/weather/current')) then
+        --   response = w:current()
+        --   headers["Content-Type"] = "application/json"
+        -- elseif(req.path:find('^/weather/history')) then
+        --   response = w:history()
+        --   headers["Content-Type"] = "application/json"
+        -- else
+        --   code = 404
+        --   status = "Not Found"
+        --   response = {error = status}
+        --   headers["Content-Type"] = "application/json"
+        -- end
 
         conn:reply_http(req, json.encode(response), code, status, headers)
     end
