@@ -20,11 +20,6 @@
 # THE SOFTWARE.
 ]]
 
--- local zmq = require 'zmq'
--- 
--- local connection = require 'mongrel2.connection'
--- local util = require 'mongrel2.util'
-
 local setmetatable = setmetatable
 
 module 'weather'
@@ -52,6 +47,7 @@ function meta:history()
       SELECT strftime("%s", datetime) * 1000 AS timestamp, temperature_in, temperature_out
       FROM weather
       WHERE temperature_out > -29.9 AND temperature_out < 69.9
+      AND datetime > datetime('now', '-7 days')
   ]]
 
   --[[
