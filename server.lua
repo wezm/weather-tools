@@ -23,7 +23,7 @@
 local mongrel2 = require 'mongrel2'
 local json     = require 'json'
 local sqlite   = require 'lsqlite3'
-local waether  = require 'weather'
+local weather  = require 'weather'
 
 local sender_id = 'AA40D395-4CA6-47CD-9D8C-FD4FDF92487E'
 local sub_addr = 'tcp://127.0.0.1:7777'
@@ -57,13 +57,25 @@ function get(pattern, block)
   route('GET', pattern, block)
 end
 
-get("^/weather/current$", function()
-  return "Hello from /weather/hello"
+get("^/weather/current$", function(req)
+  return w:current()
+end)
+
+get("^/weather/history$", function(req)
+  return w:history()
+end)
+
+get("^/weather/info$", function(req)
+  -- local out = ''
+  -- for k, v in pairs(req.headers) do
+  --   out = ('%s\n[%s]: %s)'):format(out, k, v)
+  -- end
+  return {headers = req.headers, body = req.body}
 end)
 
 -- Enter the main loop
+print 'Ready...'
 while true do
-    print 'Waiting for request...'
     local req = conn:recv()
 
     if req:is_disconnect() then
@@ -78,9 +90,11 @@ while true do
           ["Content-Type"] = "text/plain"
         }
 
+        print(("%s %s"):format(req.headers["METHOD"], req.path))
+
         for idx, route in ipairs(routes) do
           if(req.path:find(route.pattern)) then
-            response = route.block()
+            response = route.block(req)
             status = "OK"
             code = 200
             break
