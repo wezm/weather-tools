@@ -89,7 +89,7 @@ function meta:min()
       timestamp = row.timestamp
     }
   end
-  
+
   return weather
 end
 
@@ -103,7 +103,7 @@ function meta:max()
     ORDER BY temperature_out DESC
     LIMIT 1
   ]]
-  
+
   local weather
   for row in self.db:nrows(sql) do
     weather = {
@@ -111,8 +111,45 @@ function meta:max()
       timestamp = row.timestamp
     }
   end
-  
+
   return weather
+end
+
+-- Rainfall over the preceeding 7 days
+function meta:rainfall_history()
+  sql = [[
+    SELECT date(datetime) AS date, rain_24h
+    FROM weather
+    WHERE date(datetime) < date('now')
+    GROUP BY date(datetime) HAVING datetime = MAX(datetime)
+    ORDER BY datetime DESC LIMIT 7
+  ]]
+
+
+  rain = {}
+  for row in self.db:nrows(sql) do
+      rain[#rain + 1] = { row.date, row.rain_24h }
+  end
+
+  return rain
+end
+
+-- Rainfall for the current day (by hour)
+function meta:rainfall_today()
+  sql = [[
+    SELECT strftime("%H", datetime) AS hour, rain_1h
+    FROM weather
+    WHERE date(datetime) == date('now')
+    GROUP BY strftime("%Y-%m-%d %H", datetime) HAVING datetime = MAX(datetime)
+    ORDER BY datetime ASC
+  ]]
+
+  rain = {}
+  for row in self.db:nrows(sql) do
+      rain[#rain + 1] = { row.hour, row.rain_1h }
+  end
+
+  return rain
 end
 
 function new(db)

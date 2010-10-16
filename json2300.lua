@@ -37,9 +37,13 @@ local weather = weatherdb.new(db)
 
 local data = {}
 data.current = weather:current()
-data.history = weather:history()
 data.current.min = weather:min()
 data.current.max = weather:max()
+data.history = weather:history()
+data.rain = {
+  today = weather:rainfall_today(),
+  history = weather:rainfall_history()
+}
 
 db:close()
 
