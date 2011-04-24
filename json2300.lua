@@ -20,7 +20,7 @@
 # THE SOFTWARE.
 ]]
 
-local sqlite    = require "lsqlite3"
+require "lsqlite3"
 local json      = require "json"
 local weatherdb = require "weather"
 
