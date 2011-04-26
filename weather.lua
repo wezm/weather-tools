@@ -60,7 +60,8 @@ function meta:history()
   local sql = [[
       SELECT strftime("%s", datetime) * 1000 AS timestamp, temperature_in, temperature_out
       FROM weather
-      WHERE datetime > datetime('now', '-7 days')
+      WHERE temperature_out > -29.9 AND temperature_out < 69.9
+      AND datetime > datetime('now', '-7 days')
   ]]
 
   --[[
