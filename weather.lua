@@ -21,6 +21,7 @@
 ]]
 
 local setmetatable = setmetatable
+local math = require "math"
 
 module 'weather'
 
@@ -41,13 +42,25 @@ function meta:current()
   return weather
 end
 
+function meta:add_or_filter_historical_value(table, timestamp, temperature)
+  record = { timestamp, temperature }
+  -- Filter out records that appear to be outliers
+  if (#table > 0) then
+    local delta = math.abs(table[#table][2] - temperature) -- indexes start at 1
+    if (delta < 5) then
+      table[#table + 1] = record
+    end
+  else
+    table[#table + 1] = record
+  end
+end
+
 function meta:history()
   -- Weather History
   local sql = [[
       SELECT strftime("%s", datetime) * 1000 AS timestamp, temperature_in, temperature_out
       FROM weather
-      WHERE temperature_out > -29.9 AND temperature_out < 69.9
-      AND datetime > datetime('now', '-7 days')
+      WHERE datetime > datetime('now', '-7 days')
   ]]
 
   --[[
@@ -58,16 +71,17 @@ function meta:history()
     { label: "Bar", data: [ [11, 13], [19, 11], [30, -7] ] } ]
 
   ]]--
-  temp_in = {}
-  temp_out = {}
+  local record
+  local temp_in = {}
+  local temp_out = {}
   for row in self.db:nrows(sql) do
-      temp_in[#temp_in + 1] = { row.timestamp, row.temperature_in }
-      temp_out[#temp_out + 1] = { row.timestamp, row.temperature_out }
+    self:add_or_filter_historical_value(temp_in, row.timestamp, row.temperature_in)
+    self:add_or_filter_historical_value(temp_out, row.timestamp, row.temperature_out)
   end
 
   return {
-      { label = "Inside Temperature",  data = temp_in  },
-      { label = "Outside Temperature", data = temp_out }
+    { label = "Inside Temperature",  data = temp_in  },
+    { label = "Outside Temperature", data = temp_out }
   }
 end
 
