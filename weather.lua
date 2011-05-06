@@ -1,5 +1,5 @@
 --[[
-# Copyright (c) 2010 Wesley Moore http://www.wezm.net/
+# Copyright (c) 2011 Wesley Moore http://www.wezm.net/
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,6 +22,7 @@
 
 local setmetatable = setmetatable
 local math = require "math"
+local next = next
 
 module 'weather'
 
@@ -30,29 +31,43 @@ meta.__index = meta
 
 function meta:current()
   -- Current Weather Conditions
+  local sql = [[
+      SELECT
+        strftime("%s", datetime) * 1000 AS timestamp,
+        dewpoint,
+        forecast,
+        rain_1h,
+        rain_24h,
+        rain_total,
+        rel_humidity_in,
+        rel_humidity_out,
+        rel_pressure,
+        temperature_in,
+        temperature_out,
+        tendency,
+        wind_angle,
+        wind_chill,
+        wind_direction,
+        wind_speed
+      FROM weather
+      WHERE datetime(datetime) = (
+          SELECT MAX(datetime(datetime))
+          FROM weather
+      )
+  ]]
+
   local weather = {}
-
-  self.current_stmt:reset()
-
-  for row in self.current_stmt:nrows() do
+  for row in self.db:nrows(sql) do
     weather = row
   end
 
-  --stmt:finalize()
   return weather
 end
 
-function meta:add_or_filter_historical_value(table, timestamp, temperature)
-  record = { timestamp, temperature }
-  -- Filter out records that appear to be outliers
-  if (#table > 0) then
-    local delta = math.abs(table[#table][2] - temperature) -- indexes start at 1
-    if (delta < 5) then
-      table[#table + 1] = record
-    end
-  else
-    table[#table + 1] = record
-  end
+function meta:differential(x1, y1, x2, y2)
+  local dt = (x2 - x1) / 1000 -- make the time unit seconds
+  local dy = (y2) - (y1)
+  return dy / dt
 end
 
 function meta:history()
@@ -64,26 +79,34 @@ function meta:history()
       AND datetime > datetime('now', '-7 days')
   ]]
 
-  --[[
-
-  Required data format for flot JS charting library
-
-  [ { label: "Foo", data: [ [10, 1], [17, -14], [30, 5] ] },
-    { label: "Bar", data: [ [11, 13], [19, 11], [30, -7] ] } ]
-
-  ]]--
-  local record
-  local temp_in = {}
-  local temp_out = {}
+  local prev = nil
+  local history = {}
   for row in self.db:nrows(sql) do
-    self:add_or_filter_historical_value(temp_in, row.timestamp, row.temperature_in)
-    self:add_or_filter_historical_value(temp_out, row.timestamp, row.temperature_out)
+    if prev == nil then
+      prev = row
+    else
+      local dydt_out = self:differential(
+        prev.timestamp,
+        prev.temperature_out,
+        row.timestamp,
+        row.temperature_out
+      )
+
+      local dydt_in = self:differential(
+        prev.timestamp,
+        prev.temperature_in,
+        row.timestamp,
+        row.temperature_in
+      )
+
+      if math.abs(dydt_in) < 0.01 and math.abs(dydt_out) < 0.01 then
+        history[#history + 1] = {row.timestamp, row.temperature_in, row.temperature_out}
+        prev = row
+      end
+    end
   end
 
-  return {
-    { label = "Inside Temperature",  data = temp_in  },
-    { label = "Outside Temperature", data = temp_out }
-  }
+  return history
 end
 
 -- Min Temperature
@@ -135,7 +158,7 @@ function meta:rainfall_history()
   sql = [[
     SELECT date(datetime) AS date, rain_24h
     FROM weather
-    WHERE date(datetime) < date('now')
+    WHERE date(datetime, 'localtime') <= date('now', 'localtime')
     GROUP BY date(datetime) HAVING datetime = MAX(datetime)
     ORDER BY datetime DESC LIMIT 7
   ]]
@@ -154,7 +177,7 @@ function meta:rainfall_today()
   sql = [[
     SELECT strftime("%H", datetime) AS hour, rain_1h
     FROM weather
-    WHERE date(datetime) == date('now')
+    WHERE date(datetime, 'localtime') == date('now', 'localtime')
     GROUP BY strftime("%Y-%m-%d %H", datetime) HAVING datetime = MAX(datetime)
     ORDER BY datetime ASC
   ]]
@@ -168,41 +191,8 @@ function meta:rainfall_today()
 end
 
 function new(db)
-    local current_stmt = db:prepare[[
-        SELECT
-          strftime("%s", datetime) * 1000 AS timestamp,
-          dewpoint,
-          forecast,
-          rain_1h,
-          rain_24h,
-          rain_total,
-          rel_humidity_in,
-          rel_humidity_out,
-          rel_pressure,
-          temperature_in,
-          temperature_out,
-          tendency,
-          wind_angle,
-          wind_chill,
-          wind_direction,
-          wind_speed
-        FROM weather
-        WHERE datetime(datetime) = (
-            SELECT MAX(datetime(datetime))
-            FROM weather
-        )
-    ]]
-
-    if (current_stmt == nil) then
-        print("Error preparing query: " .. db:errmsg())
-        --db:close()
-        --os.exit(1)
-    end
-
-
     local obj = {
-        db = db,
-        current_stmt = current_stmt
+        db = db
     }
 
     return setmetatable(obj, meta)
