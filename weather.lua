@@ -54,7 +54,7 @@ function meta:current()
           SELECT MAX(datetime(datetime))
           FROM weather
       )
-      WHERE temperature_out > -29.9 AND temperature_out < 69.9
+      AND temperature_out > -29.9 AND temperature_out < 69.9
       AND temperature_in > -29.9 AND temperature_in < 69.9
   ]]
 
