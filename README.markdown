@@ -12,3 +12,11 @@ is json2300.lua.
 
 The temperature readings contain relatively frequent erroneous spikes, both
 positive and negative. Attempts are made to filter these out.
+
+Dependencies
+------------
+
+The tool depends on these lua rocks:
+
+* lsqlite3
+* luajson
