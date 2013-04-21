@@ -8,14 +8,15 @@ DB_PATH="$HOME/Documents/$DB"
 BACKUP_DB="$DB_PATH.bak"
 
 # Fetch current weather conditions
-"$HOME/Documents/open2300/sqlitelog2300" "$DB_PATH"
+cd "$HOME/Documents/open2300"
+"./sqlitelog2300" "$DB_PATH"
 
 # Snapshot the DB
 sqlite3 "$DB_PATH" ".backup \"$BACKUP_DB\""
 
 # Push to the server
-rsync -az "$BACKUP_DB" "weather@weather.wezm.net:$DB"
+rsync -az "$BACKUP_DB" -e "ssh -i $HOME/.ssh/weather_rsa" "weather@weather.wezm.net:$DB"
 
 # Regenerate the JSON
-ssh weather@weather.wezm.net "env LUA_INIT=\"require \\\"luarocks.require\\\"\" LUA_PATH=\"/usr/share/lua/5.1//?.lua\" lua weather-tools/json2300.lua $DB www/weather.json"
+ssh -i $HOME/.ssh/weather_rsa -l weather weather.wezm.net "env LUA_INIT=\"require \\\"luarocks.require\\\"\" LUA_PATH=\"/usr/local/share/lua/5.1//?.lua;/Users/wmoore/Source/weather-tools/?.lua\" /usr/local/bin/lua /Users/wmoore/Source/weather-tools/json2300.lua $DB www/weather.json"
 
